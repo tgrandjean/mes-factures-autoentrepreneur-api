@@ -7,6 +7,9 @@ PROJECT_PATH = Path(__file__).resolve().parents[1]
 load_dotenv(PROJECT_PATH / '.dotenv')
 
 
+DEBUG = True
+
+
 APP_URL = os.environ.get('APP_URL', 'http://localhost:5000')
 
 

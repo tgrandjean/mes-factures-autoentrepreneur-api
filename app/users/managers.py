@@ -26,4 +26,5 @@ class UserManager(BaseUserManager[UserCreate, UserDB]):
     ):
         print(f"Verification {user.id}. Verification token: {token}")
         content = f'Token:\n {token}'
-        await send_mail(user.email, "Vérification d'adress email", content)
+        if not settings.DEBUG:
+            await send_mail(user.email, "Vérification d'adress email", content)

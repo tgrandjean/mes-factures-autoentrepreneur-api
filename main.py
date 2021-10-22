@@ -1,5 +1,6 @@
 """Entry point for the project."""
 import uvicorn
+from app.settings import DEBUG
 
 
 if __name__ == "__main__":
@@ -7,4 +8,4 @@ if __name__ == "__main__":
                 host="0.0.0.0",
                 port=5000,
                 log_level="info",
-                reload=True)
+                reload=DEBUG)
