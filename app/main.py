@@ -11,6 +11,7 @@ from app.users.auth import jwt_authentication
 from app.users.routers import get_users_router
 from app.users.managers import UserManager
 
+from app.core.routers import get_core_router
 
 app = FastAPI()
 
@@ -48,4 +49,7 @@ async def app_init():
         UserDB,
     )
 
+    app.current_active_user = app.fastapi_users.current_user(active=True)
+
     app.include_router(get_users_router(app))
+    app.include_router(get_core_router(app))
