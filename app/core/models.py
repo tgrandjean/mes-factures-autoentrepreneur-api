@@ -3,6 +3,10 @@ from datetime import datetime
 from pydantic import BaseModel, EmailStr, Field, validator
 
 
+class Message(BaseModel):
+    message: str
+
+
 class Address(BaseModel):
     address: str
     zip_code: int
