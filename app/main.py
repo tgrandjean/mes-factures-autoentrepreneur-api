@@ -55,3 +55,6 @@ async def app_init():
     app.include_router(get_core_router(app), prefix='/v1')
 
 
+@app.on_event("shutdown")
+async def shutdown_app():
+    app.mongodb_client.close()
