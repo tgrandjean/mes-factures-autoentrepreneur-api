@@ -43,7 +43,7 @@ BEANIE_DOCUMENTS = [
     "app.core.documents.Invoice"
 ]
 
-JWT_TOKEN_LIFETIME = os.environ.get('JWT_TOKEN_LIFETIME', 10)
+JWT_TOKEN_LIFETIME = os.environ.get('JWT_TOKEN_LIFETIME', 3600)
 
 AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID")
 AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY")

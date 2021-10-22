@@ -52,4 +52,6 @@ async def app_init():
     app.current_active_user = app.fastapi_users.current_user(active=True)
 
     app.include_router(get_users_router(app))
-    app.include_router(get_core_router(app))
+    app.include_router(get_core_router(app), prefix='/v1')
+
+
