@@ -13,22 +13,21 @@ from app.core.background_tasks import generate_pdf_invoice
 
 def get_invoices_router(app):
 
-    router = APIRouter()
+    router = APIRouter(tags=['invoices'], prefix='/invoices')
 
-    @router.get('/invoices', response_model=List[Invoice],
-                tags=['invoices'],
+    @router.get('', response_model=List[Invoice],
                 summary="Return user's invoices",
                 description="List all invoices for a specific user",
-                responses={403: {"model": Message}})
+                responses={401: {"description": "Unauthorized"}})
     async def list_user_invoices(
         user: UserDB = Depends(app.current_active_user)
             ):
         invoices = await Invoice.find({"issuer": user.id}).to_list()
         return invoices
 
-    @router.get('/invoices/{invoice_id}', response_model=Invoice,
-                tags=['invoices'], responses={404: {"model": Message},
-                                              403: {"model": Message}})
+    @router.get('/{invoice_id}', response_model=Invoice,
+                responses={404: {"description": "Not found"},
+                           403: {"description": "Forbidden"}})
     async def get_invoice(invoice_id: PydanticObjectId,
                           user: UserDB = Depends(app.current_active_user)):
         invoice = await Invoice.get(invoice_id)
@@ -38,27 +37,26 @@ def get_invoices_router(app):
             raise HTTPException(status_code=403, detail="Forbidden")
         return invoice
 
-    @router.post('/invoices', response_model=Invoice, tags=['invoices'],
-                 status_code=201,
-                 responses={404: {"model": Message},
-                            403: {"model": Message},
-                            201: {"model": Message}})
+    @router.post('', response_model=Invoice, status_code=201,
+                 responses={404: {"description": "Not found"},
+                            403: {"description": "Forbidden"},
+                            201: {"model": Invoice}})
     async def create_invoice(invoice: InvoiceCreateSchema,
                              user: UserDB = Depends(app.current_active_user)):
         if not invoice.reference:
             last_invoice = await Invoice.find(Invoice.issuer == user.id)\
                 .sort('-emited').limit(1).to_list()
             if last_invoice:
-                current_ref = last_invoice.reference[0]
+                current_ref = last_invoice[0].reference
                 invoice.reference = increment_reference(current_ref)
             else:
                 invoice.reference = f"{datetime.now().year}-001"
         invoice_db = await Invoice(**invoice.dict(), issuer=user.id).create()
         return invoice_db
 
-    @router.patch('/invoices', response_model=Invoice, tags=['invoices'],
-                  responses={404: {"model": Message},
-                             403: {"model": Message}})
+    @router.patch('', response_model=Invoice,
+                  responses={404: {"description": "Not found"},
+                             403: {"description": "Forbidden"}})
     async def update_invoice(invoice_id: PydanticObjectId,
                              invoice: InvoiceUpdateSchema,
                              user: UserDB = Depends(app.current_active_user)):
@@ -71,10 +69,9 @@ def get_invoices_router(app):
             setattr(invoice_db, field, value)
         invoice_db = await invoice_db.save()
 
-    @router.delete('/invoices/{invoice_id}', response_model=Invoice,
-                   responses={404: {"model": Message},
-                              403: {"model": Message}},
-                   tags=['invoices'])
+    @router.delete('/{invoice_id}', response_model=Invoice,
+                   responses={404: {"description": "Not found"},
+                              403: {"description": "Forbidden"}})
     async def delete_invoice(invoice_id: PydanticObjectId,
                              user: UserDB = Depends(app.current_active_user)):
         invoice_db = await Invoice.get(invoice_id)
@@ -85,11 +82,12 @@ def get_invoices_router(app):
         await invoice_db.delete()
         return invoice_db
 
-    @router.get('/invoices/{invoice_id}/generate', tags=['invoices'],
+    @router.get('/{invoice_id}/generate',
                 status_code=202,
-                responses={404: {"model": Message},
-                           403: {"model": Message},
-                           202: {"model": Message}})
+                response_model=Message,
+                responses={404: {"description": "Not found"},
+                           403: {"description": "Forbidden"},
+                           202: {"description": "Accepted"}})
     async def generate_pdf(invoice_id: PydanticObjectId,
                            backgroud_tasks: BackgroundTasks,
                            user: UserDB = Depends(app.current_active_user)):
