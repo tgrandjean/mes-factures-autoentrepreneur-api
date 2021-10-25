@@ -4,6 +4,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from fastapi.responses import JSONResponse
 from beanie import PydanticObjectId
 
+from app.responses import ACCEPTED, UNAUTHORIZED, FORBIDDEN, NOT_FOUND
 from app.users.models import UserDB
 from app.core.documents import Customer, Quotation
 from app.core.models import (InvoiceCreateSchema, InvoiceUpdateSchema,
@@ -19,7 +20,7 @@ def get_quotations_router(app):
     @router.get('', response_model=List[Quotation],
                 summary="Return user's quotations",
                 description="List all quotations for a specific user",
-                responses={401: {"description": "Unauthorized"}})
+                responses=dict([UNAUTHORIZED]))
     async def list_user_quotations(
         user: UserDB = Depends(app.current_active_user)
             ):
@@ -27,8 +28,7 @@ def get_quotations_router(app):
         return quotations
 
     @router.get('/{quotation_id}', response_model=Quotation,
-                responses={404: {"description": "Not found"},
-                           403: {"description": "Forbidden"}})
+                responses=dict([FORBIDDEN, NOT_FOUND]))
     async def get_quotation(quotation_id: PydanticObjectId,
                             user: UserDB = Depends(app.current_active_user)):
         quotation = await Quotation.get(quotation_id)
@@ -39,9 +39,7 @@ def get_quotations_router(app):
         return quotation
 
     @router.post('', response_model=Quotation, status_code=201,
-                 responses={404: {"description": "Not found"},
-                            403: {"description": "Forbidden"},
-                            201: {"model": Quotation}})
+                 responses=dict([(201, {"model": Quotation}), UNAUTHORIZED]))
     async def create_quotation(quotation: InvoiceCreateSchema,
                                user: UserDB = Depends(app.current_active_user)
                                ):
@@ -58,8 +56,7 @@ def get_quotations_router(app):
         return quotation_db
 
     @router.patch('', response_model=Quotation,
-                  responses={404: {"description": "Not found"},
-                             403: {"description": "Forbidden"}})
+                  responses=dict([UNAUTHORIZED, FORBIDDEN, NOT_FOUND]))
     async def update_quotation(quotation_id: PydanticObjectId,
                                quotation: InvoiceUpdateSchema,
                                user: UserDB = Depends(app.current_active_user)
@@ -74,8 +71,7 @@ def get_quotations_router(app):
         quotation_db = await quotation_db.save()
 
     @router.delete('/{quotation_id}', response_model=Quotation,
-                   responses={404: {"description": "Not found"},
-                              403: {"description": "Forbidden"}})
+                   responses=dict([UNAUTHORIZED, FORBIDDEN, NOT_FOUND]))
     async def delete_quotation(quotation_id: PydanticObjectId,
                                user: UserDB = Depends(app.current_active_user)
                                ):
@@ -90,9 +86,7 @@ def get_quotations_router(app):
     @router.get('/{quotation_id}/generate',
                 status_code=202,
                 response_model=Message,
-                responses={404: {"description": "Not found"},
-                           403: {"description": "Forbidden"},
-                           202: {"description": "Accepted"}})
+                responses=dict([ACCEPTED, UNAUTHORIZED, FORBIDDEN, NOT_FOUND]))
     async def generate_pdf(quotation_id: PydanticObjectId,
                            backgroud_tasks: BackgroundTasks,
                            user: UserDB = Depends(app.current_active_user)):

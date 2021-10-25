@@ -4,6 +4,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from fastapi.responses import JSONResponse
 from beanie import PydanticObjectId
 
+from app.responses import ACCEPTED, UNAUTHORIZED, FORBIDDEN, NOT_FOUND
 from app.users.models import UserDB
 from app.core.documents import Customer, Invoice, S3Link
 from app.core.models import (InvoiceCreateSchema, InvoiceUpdateSchema, Message)
@@ -18,7 +19,7 @@ def get_invoices_router(app):
     @router.get('', response_model=List[Invoice],
                 summary="Return user's invoices",
                 description="List all invoices for a specific user",
-                responses={401: {"description": "Unauthorized"}})
+                responses=dict([UNAUTHORIZED]))
     async def list_user_invoices(
         user: UserDB = Depends(app.current_active_user)
             ):
@@ -26,8 +27,7 @@ def get_invoices_router(app):
         return invoices
 
     @router.get('/{invoice_id}', response_model=Invoice,
-                responses={404: {"description": "Not found"},
-                           403: {"description": "Forbidden"}})
+                responses=dict([FORBIDDEN, NOT_FOUND]))
     async def get_invoice(invoice_id: PydanticObjectId,
                           user: UserDB = Depends(app.current_active_user)):
         invoice = await Invoice.get(invoice_id)
@@ -38,9 +38,7 @@ def get_invoices_router(app):
         return invoice
 
     @router.post('', response_model=Invoice, status_code=201,
-                 responses={404: {"description": "Not found"},
-                            403: {"description": "Forbidden"},
-                            201: {"model": Invoice}})
+                 responses=dict([(201, {"model": Invoice}), UNAUTHORIZED]))
     async def create_invoice(invoice: InvoiceCreateSchema,
                              user: UserDB = Depends(app.current_active_user)):
         if not invoice.reference:
@@ -55,8 +53,7 @@ def get_invoices_router(app):
         return invoice_db
 
     @router.patch('', response_model=Invoice,
-                  responses={404: {"description": "Not found"},
-                             403: {"description": "Forbidden"}})
+                  responses=dict([UNAUTHORIZED, FORBIDDEN, NOT_FOUND]))
     async def update_invoice(invoice_id: PydanticObjectId,
                              invoice: InvoiceUpdateSchema,
                              user: UserDB = Depends(app.current_active_user)):
@@ -70,8 +67,7 @@ def get_invoices_router(app):
         invoice_db = await invoice_db.save()
 
     @router.delete('/{invoice_id}', response_model=Invoice,
-                   responses={404: {"description": "Not found"},
-                              403: {"description": "Forbidden"}})
+                   responses=dict([UNAUTHORIZED, FORBIDDEN, NOT_FOUND]))
     async def delete_invoice(invoice_id: PydanticObjectId,
                              user: UserDB = Depends(app.current_active_user)):
         invoice_db = await Invoice.get(invoice_id)
@@ -85,9 +81,7 @@ def get_invoices_router(app):
     @router.get('/{invoice_id}/generate',
                 status_code=202,
                 response_model=Message,
-                responses={404: {"description": "Not found"},
-                           403: {"description": "Forbidden"},
-                           202: {"description": "Accepted"}})
+                responses=dict([ACCEPTED, UNAUTHORIZED, FORBIDDEN, NOT_FOUND]))
     async def generate_pdf(invoice_id: PydanticObjectId,
                            backgroud_tasks: BackgroundTasks,
                            user: UserDB = Depends(app.current_active_user)):

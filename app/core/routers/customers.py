@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException
 import pydantic
 from beanie import PydanticObjectId
 
+from app.responses import UNAUTHORIZED, FORBIDDEN, NOT_FOUND, CONFLICT
 from app.users.models import UserDB
 from app.core.documents import Customer
 from app.core.models import CustomerIn
@@ -12,7 +13,7 @@ def get_customers_router(app):
 
     router = APIRouter(tags=['customers'], prefix='/customers')
 
-    @router.get('', responses={401: {"description": "Unauthorized"}},
+    @router.get('', responses=dict([UNAUTHORIZED]),
                 response_model=List[Customer])
     async def get_user_customers(
                 user: UserDB = Depends(app.current_active_user)
@@ -21,9 +22,7 @@ def get_customers_router(app):
         return customers
 
     @router.get('/{customer_id}',
-                responses={401: {"description": "Unauthorized"},
-                           403: {"description": "Forbidden",
-                           404: {"description": "Not found"}}},
+                responses=dict([UNAUTHORIZED, FORBIDDEN, NOT_FOUND]),
                 response_model=Customer)
     async def get_customer(
                 customer_id: PydanticObjectId,
@@ -38,8 +37,7 @@ def get_customers_router(app):
 
     @router.post('', status_code=201,
                  response_model=Customer,
-                 responses={"401": {"description": "Unauthorized"},
-                            "409": {"description": "Conflict"}})
+                 responses=dict([UNAUTHORIZED, CONFLICT]))
     async def create_customer(
                 customer: CustomerIn,
                 user: UserDB = Depends(app.current_active_user)
