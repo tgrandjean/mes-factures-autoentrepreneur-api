@@ -2,6 +2,7 @@ from invoice_generator.invoice_generator import InvoiceGenerator
 from invoice_generator import models
 
 from app import settings
+from app.core.utils import upload_file
 
 
 async def generate_pdf_invoice(invoice, issuer, customer, invoice_name=None):
@@ -15,6 +16,7 @@ async def generate_pdf_invoice(invoice, issuer, customer, invoice_name=None):
     generator = InvoiceGenerator(invoice_data,
                                  invoice_name=invoice_name,
                                  output_directory=settings.LATEX_TEMP_DIR)
-    generator.run()
+    output_path = generator.run()
     invoice.filename = generator.invoice_name
     await invoice.save()
+    upload_file(str(output_path))

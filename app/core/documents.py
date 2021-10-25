@@ -52,7 +52,8 @@ class Invoice(Document):
 
 
 class Quotation(Invoice):
-
+    title: str = 'Devis'
+    
     class Collection:
         name = "quotations"
 

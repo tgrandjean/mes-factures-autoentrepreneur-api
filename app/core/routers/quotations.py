@@ -6,10 +6,10 @@ from beanie import PydanticObjectId
 
 from app.responses import ACCEPTED, UNAUTHORIZED, FORBIDDEN, NOT_FOUND
 from app.users.models import UserDB
-from app.core.documents import Customer, Quotation
+from app.core.documents import Customer, Quotation, S3Link
 from app.core.models import (InvoiceCreateSchema, InvoiceUpdateSchema,
-                             Message)
-from app.core.utils import increment_reference
+                             Message, InvoiceFilenameProjection)
+from app.core.utils import increment_reference, create_presigned_url
 from app.core.background_tasks import generate_pdf_invoice
 
 
@@ -96,10 +96,23 @@ def get_quotations_router(app):
             raise HTTPException(status_code=404, detail="Not found")
         if quotation_db.issuer != user.id:
             raise HTTPException(status_code=403, detail="Forbidden")
+        user.RIB = None
         backgroud_tasks.add_task(generate_pdf_invoice,
                                  quotation_db, user, customer,
-                                 quotation_name=quotation_db.filename)
+                                 invoice_name=quotation_db.filename)
         return JSONResponse(status_code=202,
                             content=Message(message="Accepted").dict())
+
+    @router.get('/{quotation_id}/public', response_model=S3Link)
+    async def get_public_link(quotation_id: PydanticObjectId):
+        s3_link = await S3Link.find_one({"document": quotation_id})
+        quotation_filename = await Quotation.find({"_id": quotation_id})\
+            .project(InvoiceFilenameProjection).to_list()
+        quotation_filename = quotation_filename[0].filename + '.pdf'
+        if not s3_link:
+            public_url = create_presigned_url(quotation_filename)
+            s3_link = await S3Link(document=quotation_id,
+                                   url=public_url).create()
+        return s3_link
 
     return router

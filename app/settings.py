@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 
 PROJECT_PATH = Path(__file__).resolve().parents[1]
 
-load_dotenv(PROJECT_PATH / '.dotenv')
+load_dotenv(PROJECT_PATH / '.env')
 
 
 DEBUG = True

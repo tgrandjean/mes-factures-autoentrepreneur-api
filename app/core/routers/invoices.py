@@ -7,8 +7,9 @@ from beanie import PydanticObjectId
 from app.responses import ACCEPTED, UNAUTHORIZED, FORBIDDEN, NOT_FOUND
 from app.users.models import UserDB
 from app.core.documents import Customer, Invoice, S3Link
-from app.core.models import (InvoiceCreateSchema, InvoiceUpdateSchema, Message)
-from app.core.utils import increment_reference
+from app.core.models import (InvoiceCreateSchema, InvoiceUpdateSchema,
+                             Message, InvoiceFilenameProjection)
+from app.core.utils import increment_reference, create_presigned_url
 from app.core.background_tasks import generate_pdf_invoice
 
 
@@ -94,9 +95,20 @@ def get_invoices_router(app):
         backgroud_tasks.add_task(generate_pdf_invoice,
                                  invoice_db, user, customer,
                                  invoice_name=invoice_db.filename)
-        await S3Link(document=invoice_db.id, url="http://example.com")\
-            .create()
         return JSONResponse(status_code=202,
                             content=Message(message="Accepted").dict())
+
+    @router.get('/{invoice_id}/public', response_model=S3Link)
+    async def get_public_link(invoice_id: PydanticObjectId):
+        s3_link = await S3Link.find_one({"document": invoice_id})
+        invoice_filename = await Invoice.find({"_id": invoice_id})\
+            .project(InvoiceFilenameProjection).to_list()
+        invoice_filename = invoice_filename[0].filename + '.pdf'
+        print(invoice_filename)
+        if not s3_link:
+            public_url = create_presigned_url(invoice_filename)
+            s3_link = await S3Link(document=invoice_id,
+                                   url=public_url).create()
+        return s3_link
 
     return router

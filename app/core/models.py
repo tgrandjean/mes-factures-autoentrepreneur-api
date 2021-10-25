@@ -41,10 +41,6 @@ class Prestation(BaseModel):
     def compute_total(cls, v, values):
         return values['quantity'] * values['unit_price']
 
-    @property
-    def total_vat(self):
-        return self.unit_price * self.quantity * (self.vat / 100)
-
 
 class Issuer(BaseModel):
     first_name: str
@@ -82,3 +78,7 @@ class InvoiceUpdateSchema(BaseModel):
     emited: Optional[datetime]
     customer: Optional[PydanticObjectId]
     prestations: Optional[List[Prestation]]
+
+
+class InvoiceFilenameProjection(BaseModel):
+    filename: Optional[str]
