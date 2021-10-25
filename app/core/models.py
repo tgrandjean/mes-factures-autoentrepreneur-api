@@ -1,5 +1,6 @@
 from typing import Optional, List
 from datetime import datetime
+from beanie import PydanticObjectId
 from pydantic import BaseModel, EmailStr, Field, validator
 
 
@@ -19,7 +20,8 @@ class RIB(BaseModel):
     bic: str
 
 
-class Customer(BaseModel):
+class CustomerIn(BaseModel):
+    company: bool = False
     name: Optional[str]
     first_name: Optional[str]
     last_name: Optional[str]
@@ -67,7 +69,7 @@ class PrestationsAggregation(BaseModel):
 class InvoiceCreateSchema(BaseModel):
     reference: Optional[str]
     emited:  Optional[datetime] = None
-    customer: Customer
+    customer: PydanticObjectId
     prestations: List[Prestation]
 
     @validator('emited', pre=True, always=True)
@@ -78,5 +80,5 @@ class InvoiceCreateSchema(BaseModel):
 class InvoiceUpdateSchema(BaseModel):
     reference: Optional[str]
     emited: Optional[datetime]
-    customer: Optional[Customer]
+    customer: Optional[PydanticObjectId]
     prestations: Optional[List[Prestation]]

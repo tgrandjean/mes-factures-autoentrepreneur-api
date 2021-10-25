@@ -1,37 +1,58 @@
 from typing import List
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
+import pydantic
+from beanie import PydanticObjectId
 
 from app.users.models import UserDB
-from app.core.documents import Invoice
-from app.core.models import Customer
-
-from pydantic import BaseModel, Field
-
-
-class CustomerAgg(BaseModel):
-    title: Customer = Field(None, alias='_id')
-    total_invoices: int
-    total_spent: float
+from app.core.documents import Customer
+from app.core.models import CustomerIn
 
 
 def get_customers_router(app):
 
     router = APIRouter(tags=['customers'], prefix='/customers')
 
-    @router.get('',
-                responses={401: {"description": "Unauthorized"}},
-                response_model=List[CustomerAgg])
+    @router.get('', responses={401: {"description": "Unauthorized"}},
+                response_model=List[Customer])
     async def get_user_customers(
-        user: UserDB = Depends(app.current_active_user)
+                user: UserDB = Depends(app.current_active_user)
             ):
-        customers_agg = await Invoice.find(Invoice.issuer == user.id)\
-                .aggregate(
-                        [{"$group": {"_id": '$customer',
-                                     "total_invoices": {"$sum": 1},
-                                     "total_spent": {
-                                        "$sum": "$total_without_charge"
-                                        }
-                                     }
-                          }], projection_model=CustomerAgg).to_list()
-        return customers_agg
+        customers = await Customer.find({'user': user.id}).to_list()
+        return customers
+
+    @router.get('/{customer_id}',
+                responses={401: {"description": "Unauthorized"},
+                           403: {"description": "Forbidden",
+                           404: {"description": "Not found"}}},
+                response_model=Customer)
+    async def get_customer(
+                customer_id: PydanticObjectId,
+                user: UserDB = Depends(app.current_active_user)
+            ):
+        customer = await Customer.get(customer_id)
+        if not customer:
+            raise HTTPException(status_code=404, detail="Not found")
+        if customer.user != user.id:
+            raise HTTPException(status_code=403, detail="Forbidden")
+        return customer
+
+    @router.post('', status_code=201,
+                 response_model=Customer,
+                 responses={"401": {"description": "Unauthorized"},
+                            "409": {"description": "Conflict"}})
+    async def create_customer(
+                customer: CustomerIn,
+                user: UserDB = Depends(app.current_active_user)
+            ):
+        customer_dict = customer.dict(exclude_unset=True)
+        customer_dict['user'] = user.id
+        customer_db = await Customer.find_one(customer_dict)
+        if customer_db:
+            raise HTTPException(status_code=409, detail="Already exists")
+        try:
+            customer = await Customer(**customer.dict(), user=user.id).create()
+        except pydantic.error_wrappers.ValidationError as e:
+            raise HTTPException(status_code=422, detail=e.errors())
+        return customer
+
     return router

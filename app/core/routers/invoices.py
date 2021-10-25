@@ -5,7 +5,7 @@ from fastapi.responses import JSONResponse
 from beanie import PydanticObjectId
 
 from app.users.models import UserDB
-from app.core.documents import Invoice
+from app.core.documents import Customer, Invoice, S3Link
 from app.core.models import (InvoiceCreateSchema, InvoiceUpdateSchema, Message)
 from app.core.utils import increment_reference
 from app.core.background_tasks import generate_pdf_invoice
@@ -92,13 +92,16 @@ def get_invoices_router(app):
                            backgroud_tasks: BackgroundTasks,
                            user: UserDB = Depends(app.current_active_user)):
         invoice_db = await Invoice.get(invoice_id)
+        customer = await Customer.get(invoice_db.customer)
         if not invoice_db:
             raise HTTPException(status_code=404, detail="Not found")
         if invoice_db.issuer != user.id:
             raise HTTPException(status_code=403, detail="Forbidden")
         backgroud_tasks.add_task(generate_pdf_invoice,
-                                 invoice_db, user,
+                                 invoice_db, user, customer,
                                  invoice_name=invoice_db.filename)
+        await S3Link(document=invoice_db.id, url="http://example.com")\
+            .create()
         return JSONResponse(status_code=202,
                             content=Message(message="Accepted").dict())
 

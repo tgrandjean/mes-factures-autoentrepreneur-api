@@ -40,7 +40,10 @@ DATABASES = {
 
 
 BEANIE_DOCUMENTS = [
-    "app.core.documents.Invoice"
+    "app.core.documents.Invoice",
+    "app.core.documents.Quotation",
+    "app.core.documents.Customer",
+    "app.core.documents.S3Link"
 ]
 
 JWT_TOKEN_LIFETIME = os.environ.get('JWT_TOKEN_LIFETIME', 3600)
